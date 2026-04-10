@@ -17,14 +17,46 @@ export async function POST(request: NextRequest) {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { data: existingUser } = await supabaseAdmin
+    const { data: existingUser, error: existingUserError } = await supabaseAdmin
       .from('users')
-      .select('*')
+      .select('id, email')
       .eq('email', email.toLowerCase())
-      .single()
+      .maybeSingle()
+
+    if (existingUserError) {
+      console.error("Check existing user error:", existingUserError)
+    }
 
     if (existingUser) {
+      console.log("Existing user in DB:", existingUser)
       return NextResponse.json({ message: "Email already registered" }, { status: 400 })
+    }
+
+    // Also check Supabase Auth - user might exist in Auth but not in our users table
+    try {
+      const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers()
+      const authUser = authUsers?.users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+      
+      if (authUser) {
+        console.log("Existing user in Auth:", authUser.id)
+        // Sync user to our users table and allow login
+        await supabaseAdmin.from('users').insert({
+          id: authUser.id,
+          email: email.toLowerCase(),
+          name: authUser.user_metadata?.name || email.split('@')[0],
+          is_pro: false,
+          scripts_limit: 3,
+          scripts_used: 0,
+          is_lifetime: true,
+        })
+        
+        return NextResponse.json({ 
+          message: "Account synced. Please login." ,
+          needsLogin: true
+        }, { status: 400 })
+      }
+    } catch (authError) {
+      console.error("Auth check error:", authError)
     }
 
     const { data: ipUsers } = await supabaseAdmin
