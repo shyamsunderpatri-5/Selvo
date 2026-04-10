@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   name TEXT,
   password_hash TEXT,
   is_pro BOOLEAN DEFAULT FALSE,
+  is_lifetime BOOLEAN DEFAULT FALSE,
   scripts_used INTEGER DEFAULT 0,
   scripts_limit INTEGER DEFAULT 3,
   razorpay_customer_id TEXT,

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (authData.user) {
-        await supabaseAdmin.from('users').insert({
+      const { error: insertError } = await supabaseAdmin.from('users').insert({
         id: authData.user.id,
         email: email.toLowerCase(),
         name: name || email.split('@')[0],
@@ -61,6 +61,11 @@ export async function POST(request: NextRequest) {
         scripts_used: 0,
         is_lifetime: true,
       })
+
+      if (insertError) {
+        console.error("User insert error:", insertError)
+        return NextResponse.json({ message: "Failed to create user: " + insertError.message }, { status: 500 })
+      }
 
       await supabaseAdmin.from('ip_tracker').insert({
         user_id: authData.user.id,
