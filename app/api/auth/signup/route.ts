@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ success: true, user: authData.user })
+    return NextResponse.json({ success: true, user: authData.user, redirectToLogin: true })
 
   } catch (error: any) {
     console.error("Signup error:", error)

@@ -52,29 +52,7 @@ function SignupForm() {
         return
       }
 
-      if (result.user) {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-        if (signInError) {
-          setError("Account created! Please login.")
-          router.push("/login")
-          return
-        }
-
-        setAuthCookie(result.user.id)
-        localStorage.setItem("selvo_user", JSON.stringify({
-          id: result.user.id,
-          email,
-          name: name || email.split("@")[0],
-          isPro: plan === "pro",
-          scriptsUsed: 0,
-          scriptsLimit: plan === "pro" ? 999 : 3,
-        }))
-        router.push("/dashboard")
-      }
+      router.push("/login")
     } catch (err) {
       setError("Failed to create account. Please try again.")
     } finally {

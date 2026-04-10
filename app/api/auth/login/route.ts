@@ -4,9 +4,12 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+const MAX_FREE_ACCOUNTS_PER_IP = 2
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
 
     if (!email || !password) {
       return NextResponse.json(
@@ -27,6 +30,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { message: "User not found. Please sign up first." },
         { status: 401 }
+      )
+    }
+
+    const { data: ipData } = await supabaseAdmin
+      .from('ip_tracker')
+      .select('user_id')
+      .eq('ip_address', ip)
+
+    const accountCount = ipData?.length || 0
+    
+    const isPro = userData.is_pro || userData.is_lifetime === true
+    
+    if (!isPro && accountCount >= MAX_FREE_ACCOUNTS_PER_IP) {
+      return NextResponse.json(
+        { message: "Maximum free accounts reached from this device. Please upgrade to Pro to continue." },
+        { status: 403 }
       )
     }
 

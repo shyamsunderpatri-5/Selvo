@@ -94,3 +94,13 @@ CREATE TRIGGER trigger_increment_script_usage
 
 -- Enable realtime for scripts
 ALTER PUBLICATION supabase_realtime ADD TABLE public.scripts;
+
+-- IP Tracker table
+CREATE TABLE IF NOT EXISTS public.ip_tracker (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  ip_address TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ip_tracker_ip ON public.ip_tracker(ip_address);
