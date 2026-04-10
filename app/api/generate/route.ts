@@ -36,6 +36,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
     }
 
+    // Check script limit for non-pro users
+    if (userId) {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey)
+      const { data: user } = await supabase
+        .from('users')
+        .select('is_pro, is_lifetime, scripts_used, scripts_limit')
+        .eq('id', userId)
+        .single()
+
+      if (user) {
+        const isSubscribed = user.is_pro === true || user.is_lifetime === true
+        if (!isSubscribed && user.scripts_used >= user.scripts_limit) {
+          return NextResponse.json({ 
+            message: "Daily script limit reached. Upgrade to Pro for unlimited scripts." 
+          }, { status: 403 })
+        }
+      }
+    }
+
     const apiKey = process.env.GROQ_API_KEY
     if (!apiKey || apiKey === 'gsk_your_groq_api_key_here') {
       return NextResponse.json({ message: "Please add GROQ_API_KEY in .env.local" }, { status: 500 })
@@ -104,9 +123,32 @@ export async function POST(request: NextRequest) {
 
     scriptData.hashtags = hashtags
 
+    // Increment script count for non-pro users
     if (userId) {
       try {
         const supabase = createClient(supabaseUrl, supabaseServiceKey)
+        
+        // Get user to check if pro
+        const { data: user } = await supabase
+          .from('users')
+          .select('is_pro, is_lifetime')
+          .eq('id', userId)
+          .single()
+
+        const isSubscribed = user?.is_pro === true || user?.is_lifetime === true
+        
+        // Only increment for non-subscribed users
+        if (!isSubscribed) {
+          await supabase
+            .from('users')
+            .update({ 
+              scripts_used: user?.scripts_used + 1 || 1,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId)
+        }
+
+        // Save script
         await supabase.from('scripts').insert({
           user_id: userId,
           topic,

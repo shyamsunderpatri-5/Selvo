@@ -40,8 +40,10 @@ export async function POST(request: NextRequest) {
 
     const accountCount = ipData?.length || 0
     
-    const isPro = userData.is_pro || userData.is_lifetime === true
+    // Get user's subscription status
+    const isPro = userData.is_pro === true || userData.is_lifetime === true
     
+    // Block only if: NOT subscribed AND has more than allowed free accounts
     if (!isPro && accountCount >= MAX_FREE_ACCOUNTS_PER_IP) {
       return NextResponse.json(
         { message: "Maximum free accounts reached from this device. Please upgrade to Pro to continue." },
