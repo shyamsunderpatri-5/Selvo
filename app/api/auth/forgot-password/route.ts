@@ -1,11 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { randomBytes } from 'crypto'
+import nodemailer from 'nodemailer'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 const RESET_CODE_EXPIRY = 15 * 60 * 1000 // 15 minutes
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  }
+})
+
+async function sendResetEmail(email: string, code: string) {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    console.log("Gmail not configured. Code:", code)
+    return true
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  
+  await transporter.sendMail({
+    from: `"Selvo.ai" <${process.env.GMAIL_USER}>`,
+    to: email,
+    subject: 'Reset your Selvo.ai password',
+    html: `
+      <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+        <h2 style="color: #9333ea;">Reset your password</h2>
+        <p>Your verification code is:</p>
+        <div style="background: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; letter-spacing: 8px; font-weight: bold; color: #9333ea;">
+          ${code}
+        </div>
+        <p style="color: #6b7280; font-size: 14px;">This code expires in 15 minutes.</p>
+        <p style="color: #6b7280; font-size: 14px;">If you didn't request this, ignore this email.</p>
+      </div>
+    `
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,15 +74,10 @@ export async function POST(request: NextRequest) {
         expires_at: new Date(Date.now() + RESET_CODE_EXPIRY).toISOString()
       })
 
-      // In production, send via email. For now, return code for testing
-      // TODO: Integrate with email service
-      console.log("Password reset code for", email, ":", code)
+      // Send email
+      await sendResetEmail(email.toLowerCase(), code)
 
-      return NextResponse.json({ 
-        message: "Code sent to your email",
-        // Remove this in production
-        devCode: code 
-      })
+      return NextResponse.json({ message: "Code sent to your email" })
     }
 
     // Verify code and reset password
