@@ -105,3 +105,14 @@ CREATE TABLE IF NOT EXISTS public.ip_tracker (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ip_tracker_ip ON public.ip_tracker(ip_address);
+
+-- Password resets table
+CREATE TABLE IF NOT EXISTS public.password_resets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  code TEXT NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_code ON public.password_resets(code);
